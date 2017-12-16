@@ -1,19 +1,20 @@
 from gestor.Proceso import  Proceso
 class Memoria:
         def __init__(self,  max, procesos):
-            self.__instante = 1
+            self.__instante = 0
             self.__max = max
             self.__procesos = procesos
             self.__procesosAct = []
             self.__maxSpace = max
-            for proceso in procesos:
-                if(proceso.getLlegada() == 0):
-                    if(proceso.getMemoria()<= self.__maxSpace):
+            for i,proceso in enumerate(self.__procesos):
+                if(proceso.getLlegada()) == 0:
+                    if(proceso.getMemoria() <= self.__maxSpace):
+                        proceso.setAsignado(True)
                         self.__procesosAct.append(proceso)
+                        self.__procesos[i] = None
                         self.__maxSpace -= proceso.getMemoria()
             if(self.__maxSpace > 0):
                 self.__procesosAct.append(Proceso("Hueco",None, self.__maxSpace,None))
-
         def getInstante(self):
             return self.__instante
 
@@ -21,9 +22,10 @@ class Memoria:
             return self.__procesosAct.__getitem__(i)
 
         def insertarProceso(self,i,proceso):
-            tam = self.getProcesoAct(i).getMemoria() - proceso.getMemoria()
+            tam =  (self.__procesosAct[i]).getMemoria() - proceso.getMemoria()
             if(tam > 0):
                 self.__procesosAct.insert(i+1,Proceso("Hueco",None, tam, None))
+            proceso.setAsignado(True)
             self.__procesosAct[i] = proceso
 
         def getMax(self):
@@ -33,40 +35,75 @@ class Memoria:
         def hayHueco(self,proceso,hueco):
                 if(hueco.isAsignado() == False and proceso.getMemoria() <= hueco.getMemoria()):
                     return True
+        def procesosTerminados(self):
+            for i,proceso in enumerate(self.__procesosAct):
+                if proceso.getTiempo() <= 0:
+                    self.__procesosAct.pop(i)
+                    self.__procesosAct.insert(i,Proceso("Hueco",None,proceso.getMemoria(),None))
+        def gastarTiempo(self):
+            for i,proceso in enumerate(self.__procesosAct):
+                if(proceso.isAsignado()):
+                    proceso.gastoTiempo()
+                    self.__procesosAct[i] = proceso
+            self.__instante += 1
+        def juntarHuecos(self):
+            init = -1
+            fin = -1
+            esHueco = False
+            huecoNuevo = Proceso("Hueco", None,0, None)
+            huecoNuevo.setAsignado(False)
+            for i, proceso in enumerate(self.__procesosAct):
+                if(proceso.isAsignado() == False):
+                    if(esHueco == False):
+                        init = i
+                        esHueco = True
+                    fin = i
+                    huecoNuevo.setMemoria(huecoNuevo.getMemoria()+ proceso.getMemoria())
+                if(proceso.isAsignado() == True or i == len(self.__procesosAct)-1):
+                    if(init >= 0 and fin >= 0):
+                        for j in reversed(range(init,fin+1)):
+                            self.__procesosAct.pop(j)
+                        self.__procesosAct.insert(init, huecoNuevo)
+                        esHueco = False
+        def manejarFinTiempo(self):
+            self.gastarTiempo()
+            print self.__str__()
+            self.procesosTerminados()
+            self.juntarHuecos()
+
         def primerHueco(self):
             for i,proceso in enumerate(self.__procesos):
-                hueco = False
-                if(proceso.getLlegada() <= self.getInstante()):
-                    for j,hueco in enumerate(self.__procesosAct):
-                        if(self.hayHueco(proceso,hueco[j])):
-                            self.insertarProceso(j,proceso)
-                            self.__procesos.pop(i)
-                            i -= 1
-                    if hueco == False : print "Por ahora, no hay hueco para el proceso: %s" % (proceso.getNombre())
-            for i,proceso in enumerate(self.__procesosAct):
-                if(proceso.isAsignado()): self.__procesosAct[i].gastoTiempo()
-            self.__instante += 1
-
-        '''def mejorHueco(self):
-           for i,proceso in enumerate(self.__procesos):
-                hueco = False
-                if(proceso.getLlegada() <= self.getInstante()):
-                    for j,hueco in enumerate(self.__procesosAct):
-                        if(self.hayHueco(proceso,hueco[j])):
-                            hueco = True
-                            self.insertarProceso(j,proceso)
-                            self.__procesos.pop(i)
-                            i -= 1
-                    if hueco == False : print "Por ahora, no hay hueco para el proceso: %s" % (proceso.getNombre())
-            self.__instante += 1
-        '''
+                hayHueco = False
+                if proceso != None:
+                    if proceso.getLlegada() <= self.getInstante():
+                        for j,hueco in enumerate(self.__procesosAct):
+                            if self.hayHueco(proceso, hueco):
+                                hayHueco = True
+                                self.insertarProceso(j, proceso)
+                                self.__procesos[i] = None
+                                break
+                        if hayHueco == False : print "Por ahora, no hay hueco para el proceso: %s" % (proceso.getNombre())
+            self.manejarFinTiempo()
+        def mejorHueco(self):
+            for i,proceso in enumerate(self.__procesos):
+                hayHueco = False
+                if proceso != None:
+                    if proceso.getLlegada() <= self.getInstante():
+                        for j,hueco in enumerate(self.__procesosAct):
+                            if self.hayHueco(proceso, hueco):
+                                hayHueco = True
+                                self.insertarProceso(j, proceso)
+                                self.__procesos[i] = None
+                                break
+                        if hayHueco == False : print "Por ahora, no hay hueco para el proceso: %s" % (proceso.getNombre())
+            self.manejarFinTiempo()
         def getProcesos(self):
             return self.__procesos
         def __str__(self):
             str = '%s ' % (self.__instante)
             mem = 0
-            for proceso in self.getProcesos():
+            for proceso in self.getProcesosAct():
                 str += '[%s %s] ' % (mem,proceso.__str__())
-                mem += int(proceso.getMemoria())
+                mem += proceso.getMemoria()
             str += '\n'
             return str
