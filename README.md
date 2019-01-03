@@ -1,2 +1,2 @@
-# Particiones
-Sistemas operativos práctica 3 particiones
+# Partitions
+A partitions management example using python.
